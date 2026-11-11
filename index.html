@@ -1,0 +1,210 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BATTLE INDIA</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#07111d;color:white;
+ font-family:Arial;text-align:center;overflow:hidden
+}
+header{padding:10px;background:#101f30}
+h2{color:#ffb52e;margin:5px}
+#game{display:block;width:100vw;height:72vh;
+ background:#254b32;touch-action:none}
+button{
+ background:#ffad22;border:0;border-radius:12px;
+ padding:13px 20px;font-weight:bold;margin:5px;
+}
+#controls{display:flex;justify-content:space-around;
+ align-items:center;flex-wrap:wrap}
+.pad{display:grid;grid-template-columns:repeat(3,48px)}
+.pad button{padding:12px;margin:3px}
+#info{padding:8px;color:#a9e9ff}
+</style>
+</head>
+<body>
+<header>
+<h2>🇮🇳 BATTLE INDIA</h2>
+<div id="info">READY FOR BATTLE</div>
+</header>
+<canvas id="game"></canvas>
+<div id="controls">
+ <div class="pad">
+  <span></span><button data-key="up">▲</button><span></span>
+  <button data-key="left">◀</button>
+  <button data-key="down">▼</button>
+  <button data-key="right">▶</button>
+ </div>
+ <button id="tag">⚡ TAG</button>
+ <button id="start">START GAME</button>
+</div>
+<script>
+const c=document.getElementById("game");
+const ctx=c.getContext("2d");
+const info=document.getElementById("info");
+
+let W,H,player,bots,keys={},playing=false;
+let time=0,zone=0,score=0;
+
+function resize(){
+ W=c.width=innerWidth;
+ H=c.height=innerHeight*.72;
+}
+resize();
+onresize=resize;
+
+function reset(){
+ player={x:W/2,y:H/2,r:12,speed:3};
+ bots=[];
+ for(let i=0;i<10;i++){
+ bots.push({
+ x:Math.random()*W,
+ y:Math.random()*H,
+ r:11,
+ alive:true,
+ dx:Math.random()*2-1,
+ dy:Math.random()*2-1
+ });
+ }
+ time=0;zone=0;score=0;
+ playing=true;
+}
+
+document.getElementById("start").onclick=reset;
+
+function press(key,on){
+ keys[key]=on;
+}
+document.querySelectorAll("[data-key]").forEach(b=>{
+ let k=b.dataset.key;
+ b.onpointerdown=e=>{e.preventDefault();press(k,true)};
+ b.onpointerup=()=>press(k,false);
+ b.onpointerleave=()=>press(k,false);
+});
+
+onkeydown=e=>{
+ if(e.key==="ArrowUp"||e.key==="w")press("up",true);
+ if(e.key==="ArrowDown"||e.key==="s")press("down",true);
+ if(e.key==="ArrowLeft"||e.key==="a")press("left",true);
+ if(e.key==="ArrowRight"||e.key==="d")press("right",true);
+};
+onkeyup=e=>{
+ keys.up=keys.down=keys.left=keys.right=false;
+};
+
+document.getElementById("tag").onclick=()=>{
+ if(!playing)return;
+ bots.forEach(b=>{
+  if(b.alive&&Math.hypot(b.x-player.x,b.y-player.y)<65){
+   b.alive=false;score++;
+  }
+ });
+};
+
+function draw(){
+ ctx.clearRect(0,0,W,H);
+
+ // Indian-inspired green battlefield
+ ctx.fillStyle="#315b38";
+ ctx.fillRect(0,0,W,H);
+
+ // Grass and paths
+ ctx.strokeStyle="#456c45";
+ ctx.lineWidth=2;
+ for(let i=0;i<20;i++){
+  ctx.beginPath();
+  ctx.moveTo(i*75,0);
+  ctx.lineTo(i*75,H);
+  ctx.stroke();
+ }
+ ctx.fillStyle="#92794e";
+ ctx.fillRect(W*.1,H*.2,65,45);
+ ctx.fillRect(W*.75,H*.65,75,45);
+
+ // Safe zone
+ let radius=Math.max(65,Math.min(W,H)*.48-zone);
+ ctx.beginPath();
+ ctx.arc(W/2,H/2,radius,0,Math.PI*2);
+ ctx.strokeStyle="#64eaff";
+ ctx.lineWidth=4;
+ ctx.stroke();
+
+ // Bots
+ bots.forEach(b=>{
+  if(!b.alive)return;
+  ctx.fillStyle="#ff704d";
+  ctx.beginPath();
+  ctx.arc(b.x,b.y,b.r,0,7);
+  ctx.fill();
+  ctx.fillStyle="white";
+  ctx.fillRect(b.x-4,b.y-3,3,3);
+ });
+
+ // Player
+ ctx.fillStyle="#ffcf37";
+ ctx.beginPath();
+ ctx.arc(player.x,player.y,player.r,0,7);
+ ctx.fill();
+ ctx.fillStyle="white";
+ ctx.fillRect(player.x-4,player.y-3,3,3);
+
+ ctx.fillStyle="white";
+ ctx.font="13px Arial";
+ ctx.fillText("YOU",player.x-12,player.y-18);
+}
+
+function update(){
+ if(playing){
+  time+=1/60;
+
+  let dx=0,dy=0;
+  if(keys.up)dy--;
+  if(keys.down)dy++;
+  if(keys.left)dx--;
+  if(keys.right)dx++;
+
+  let length=Math.hypot(dx,dy)||1;
+  player.x+=dx/length*player.speed;
+  player.y+=dy/length*player.speed;
+
+  player.x=Math.max(12,Math.min(W-12,player.x));
+  player.y=Math.max(12,Math.min(H-12,player.y));
+
+  bots.forEach(b=>{
+   if(!b.alive)return;
+   b.x+=b.dx;
+   b.y+=b.dy;
+   if(Math.random()<.025){
+    b.dx=Math.random()*2-1;
+    b.dy=Math.random()*2-1;
+   }
+   b.x=Math.max(10,Math.min(W-10,b.x));
+   b.y=Math.max(10,Math.min(H-10,b.y));
+  });
+
+  zone=Math.min(Math.min(W,H)*.38,time*.12);
+
+  let remaining=bots.filter(b=>b.alive).length;
+  info.textContent=
+   "⏱ "+Math.floor(time)+"s | 🤖 "+remaining+
+   " | ⚡ Tags: "+score;
+
+  if(time>=60||remaining===0){
+   playing=false;
+   info.textContent=remaining===0?
+    "🏆 YOU WIN!":"⏱ TIME UP! GAME OVER";
+  }
+ }
+ draw();
+ requestAnimationFrame(update);
+}
+reset();
+playing=false;
+update();
+</script>
+</body>
+</html>
